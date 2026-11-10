@@ -1,5 +1,7 @@
 from pico2d import load_image
 
+import game_framework
+
 # ---------------------------------------------------------------------------
 # bird_animation.png (918 x 506) 스프라이트 시트 정보
 #  - 5열 x 3행, 마지막 행은 4프레임 → 총 14프레임
@@ -9,7 +11,14 @@ from pico2d import load_image
 #  - pico2d 의 clip_draw 는 이미지 '아래쪽' 기준 좌표를 쓰므로 bottom 으로 변환
 # ---------------------------------------------------------------------------
 PIXEL_PER_METER = (10.0 / 0.3)  # 10 pixel 30 cm
+
+# ---------------------------------------------------------------------------
+# Bird Action Speed (날갯짓 1회 = 스프라이트 14프레임 1사이클)
+# ---------------------------------------------------------------------------
+TIME_PER_ACTION = 0.5  # 날갯짓 1회에 걸리는 시간(초)
+ACTION_PER_TIME = 1.0 / TIME_PER_ACTION  # 초당 날갯짓 횟수
 FRAMES_PER_ACTION = 14  # 날갯짓 1회를 구성하는 프레임 수
+FRAMES_PER_SECOND = FRAMES_PER_ACTION * ACTION_PER_TIME
 
 SHEET_H = 506
 FRAME_W = 182
@@ -38,7 +47,8 @@ class Bird:
         self.frame = 0
 
     def update(self):
-        pass
+        dt = game_framework.frame_time
+        self.frame = (self.frame + FRAMES_PER_SECOND * dt) % FRAMES_PER_ACTION
 
     def draw(self):
         left, bottom, w, h = FRAMES[int(self.frame)]
