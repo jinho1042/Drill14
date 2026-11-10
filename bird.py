@@ -8,6 +8,8 @@ import game_framework
 #  - 가로 간격: 부리 끝 x 좌표가 179, 361, 543, 725, 907 로 정확히 182px 간격
 #  - 세로 구간: 행 사이의 완전 투명 구간(144~215, 340~369)을 기준으로
 #    행의 윗변(top)을 0 / 169 / 340 으로 잡음 (이미지 위쪽 기준 좌표)
+#    → 각 셀의 top 에서 부리까지의 거리가 프레임 순서대로
+#      103→95 / 95→97 / 100→103 으로 이어져 행이 바뀔 때 몸통이 튀지 않음
 #  - pico2d 의 clip_draw 는 이미지 '아래쪽' 기준 좌표를 쓰므로 bottom 으로 변환
 # ---------------------------------------------------------------------------
 PIXEL_PER_METER = (10.0 / 0.3)  # 10 pixel 30 cm
@@ -23,6 +25,7 @@ FRAMES_PER_SECOND = FRAMES_PER_ACTION * ACTION_PER_TIME
 SHEET_H = 506
 FRAME_W = 182
 ROW_RECTS = [(0, 169), (169, 171), (340, 166)]  # (top, height), 이미지 위쪽 기준
+REF_H = ROW_RECTS[0][1]  # 화면 배치 기준 높이
 
 # 프레임 번호 → (left, bottom, width, height)  (pico2d clip 좌표계)
 FRAMES = []
@@ -52,5 +55,7 @@ class Bird:
 
     def draw(self):
         left, bottom, w, h = FRAMES[int(self.frame)]
+        # 행마다 셀 높이가 다르므로 셀 윗변을 같은 화면 위치에 맞춰 몸통 떨림 방지
+        draw_y = self.y + (REF_H - h) * DRAW_SCALE / 2
         Bird.image.clip_draw(left, bottom, w, h,
-                             self.x, self.y, w * DRAW_SCALE, h * DRAW_SCALE)
+                             self.x, draw_y, w * DRAW_SCALE, h * DRAW_SCALE)
