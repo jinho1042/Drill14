@@ -1,3 +1,5 @@
+import random
+
 from pico2d import load_image, get_canvas_width
 
 import game_framework
@@ -50,19 +52,24 @@ DRAW_SCALE = BIRD_SIZE_M * PIXEL_PER_METER / FRAME_W
 class Bird:
     image = None
 
-    def __init__(self, x=800, y=400):
+    def __init__(self, x=None, y=None):
         if Bird.image is None:
-            Bird.image = load_image('bird_animation.png')
+            Bird.image = load_image('bird_animation.png')  # 10마리가 텍스처 1개를 공유
 
         self.half_w = FRAME_W * DRAW_SCALE / 2
-        self.x, self.y = x, y
-        self.frame = 0
-        self.speed = FLY_SPEED_PPS
-        self.dir = 1
+        self.x = x if x is not None else random.uniform(
+            self.half_w, get_canvas_width() - self.half_w)
+        self.y = y if y is not None else random.uniform(300, 550)
+
+        # 새마다 시작 프레임 / 속도 / 날갯짓 빠르기 / 방향을 다르게 해 자연스러운 새떼 표현
+        self.frame = random.uniform(0, FRAMES_PER_ACTION)
+        self.speed = FLY_SPEED_PPS * random.uniform(0.8, 1.2)
+        self.fps = FRAMES_PER_SECOND * random.uniform(0.9, 1.1)
+        self.dir = random.choice([-1, 1])
 
     def update(self):
         dt = game_framework.frame_time
-        self.frame = (self.frame + FRAMES_PER_SECOND * dt) % FRAMES_PER_ACTION
+        self.frame = (self.frame + self.fps * dt) % FRAMES_PER_ACTION
         self.x += self.dir * self.speed * dt
 
         # 화면 좌우 끝에 닿으면 방향 전환 → 좌우 반복 비행
