@@ -1,6 +1,23 @@
-from pico2d import load_image
+from pico2d import load_image, get_canvas_width
 
 import game_framework
+
+# ---------------------------------------------------------------------------
+# Bird Fly Speed (boy.py 와 동일한 물리 단위 체계: 10 pixel = 30 cm)
+# ---------------------------------------------------------------------------
+PIXEL_PER_METER = (10.0 / 0.3)  # 10 pixel 30 cm
+FLY_SPEED_KMPH = 20.0  # 기준 비행 속도 Km / Hour (개체별로 약간씩 변동)
+FLY_SPEED_MPM = (FLY_SPEED_KMPH * 1000.0 / 60.0)
+FLY_SPEED_MPS = (FLY_SPEED_MPM / 60.0)
+FLY_SPEED_PPS = (FLY_SPEED_MPS * PIXEL_PER_METER)
+
+# ---------------------------------------------------------------------------
+# Bird Action Speed (날갯짓 1회 = 스프라이트 14프레임 1사이클)
+# ---------------------------------------------------------------------------
+TIME_PER_ACTION = 0.5  # 날갯짓 1회에 걸리는 시간(초)
+ACTION_PER_TIME = 1.0 / TIME_PER_ACTION  # 초당 날갯짓 횟수
+FRAMES_PER_ACTION = 14  # 날갯짓 1회를 구성하는 프레임 수
+FRAMES_PER_SECOND = FRAMES_PER_ACTION * ACTION_PER_TIME
 
 # ---------------------------------------------------------------------------
 # bird_animation.png (918 x 506) 스프라이트 시트 정보
@@ -12,16 +29,6 @@ import game_framework
 #      103→95 / 95→97 / 100→103 으로 이어져 행이 바뀔 때 몸통이 튀지 않음
 #  - pico2d 의 clip_draw 는 이미지 '아래쪽' 기준 좌표를 쓰므로 bottom 으로 변환
 # ---------------------------------------------------------------------------
-PIXEL_PER_METER = (10.0 / 0.3)  # 10 pixel 30 cm
-
-# ---------------------------------------------------------------------------
-# Bird Action Speed (날갯짓 1회 = 스프라이트 14프레임 1사이클)
-# ---------------------------------------------------------------------------
-TIME_PER_ACTION = 0.5  # 날갯짓 1회에 걸리는 시간(초)
-ACTION_PER_TIME = 1.0 / TIME_PER_ACTION  # 초당 날갯짓 횟수
-FRAMES_PER_ACTION = 14  # 날갯짓 1회를 구성하는 프레임 수
-FRAMES_PER_SECOND = FRAMES_PER_ACTION * ACTION_PER_TIME
-
 SHEET_H = 506
 FRAME_W = 182
 ROW_RECTS = [(0, 169), (169, 171), (340, 166)]  # (top, height), 이미지 위쪽 기준
@@ -46,16 +53,32 @@ class Bird:
     def __init__(self, x=800, y=400):
         if Bird.image is None:
             Bird.image = load_image('bird_animation.png')
+
+        self.half_w = FRAME_W * DRAW_SCALE / 2
         self.x, self.y = x, y
         self.frame = 0
+        self.speed = FLY_SPEED_PPS
+        self.dir = 1
 
     def update(self):
         dt = game_framework.frame_time
         self.frame = (self.frame + FRAMES_PER_SECOND * dt) % FRAMES_PER_ACTION
+        self.x += self.dir * self.speed * dt
+
+        # 화면 좌우 끝에 닿으면 방향 전환 → 좌우 반복 비행
+        right_limit = get_canvas_width() - self.half_w
+        if self.x > right_limit:
+            self.x = right_limit
+            self.dir = -1
+        elif self.x < self.half_w:
+            self.x = self.half_w
+            self.dir = 1
 
     def draw(self):
         left, bottom, w, h = FRAMES[int(self.frame)]
         # 행마다 셀 높이가 다르므로 셀 윗변을 같은 화면 위치에 맞춰 몸통 떨림 방지
         draw_y = self.y + (REF_H - h) * DRAW_SCALE / 2
-        Bird.image.clip_draw(left, bottom, w, h,
-                             self.x, draw_y, w * DRAW_SCALE, h * DRAW_SCALE)
+        # 원본 스프라이트는 오른쪽을 바라봄 → 왼쪽 비행 시 좌우 반전
+        flip = '' if self.dir == 1 else 'h'
+        Bird.image.clip_composite_draw(left, bottom, w, h, 0, flip,
+                                       self.x, draw_y, w * DRAW_SCALE, h * DRAW_SCALE)
